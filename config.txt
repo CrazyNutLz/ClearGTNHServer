@@ -1,0 +1,4 @@
+G:\0---------服务端---------0\GT_New_Horizons_2.3.0_Server\World||inventory-,-death-,.dat
+G:\0---------服务端---------0\GT_New_Horizons_2.3.0_Server\World\data||Tracker,.dat
+G:\0---------服务端---------0\GT_New_Horizons_2.3.0_Server\logs||.log,.gz
+G:\0---------服务端---------0\GT_New_Horizons_2.3.0_Server\crash-reports||crash-,.txt

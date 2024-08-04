@@ -17,9 +17,45 @@ class Program
 
         try
         {
-            string currentDirectory = @"G:\0---------服务端---------0\GT_New_Horizons_2.3.0_Server\World";
-            Console.WriteLine($"Searching in: {currentDirectory}");
-            await RemoveFilesAsync(currentDirectory);
+            // 从配置文件中读取目录和条件
+            string configFilePath = "config.txt";
+            if (!File.Exists(configFilePath))
+            {
+                Console.WriteLine($"Configuration file {configFilePath} does not exist.");
+                return;
+            }
+
+            var configLines = File.ReadAllLines(configFilePath);
+
+            foreach (var line in configLines)
+            {
+                if (string.IsNullOrWhiteSpace(line) || !line.Contains("||"))
+                {
+                    Console.WriteLine($"Invalid configuration line, skipping: {line}");
+                    continue;
+                }
+
+                var parts = line.Split(new[] { "||" }, 2, StringSplitOptions.None);
+                var directoryPath = parts[0].Trim();
+
+                if (!Directory.Exists(directoryPath))
+                {
+                    Console.WriteLine($"Directory does not exist, skipping: {directoryPath}");
+                    continue;
+                }
+
+                var criteria = parts[1].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (criteria.Length == 0)
+                {
+                    Console.WriteLine($"No valid criteria provided for directory, skipping: {directoryPath}");
+                    continue;
+                }
+
+                Console.WriteLine($"Searching in: {directoryPath} with criteria: {string.Join(", ", criteria)}");
+
+                await RemoveFilesAsync(directoryPath, criteria);
+            }
 
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             Console.WriteLine($"Deleted {deletedFileCount} files with a total size of {totalSizeMB:F2} MB.");
@@ -36,10 +72,10 @@ class Program
             Console.WriteLine("Press Enter to exit...");
             Console.ReadLine();
         }
-        
     }
 
-    static async Task RemoveFilesAsync(string directoryPath)
+
+    static async Task RemoveFilesAsync(string directoryPath, params string[] criteria)
     {
         try
         {
@@ -53,7 +89,18 @@ class Program
                 tasks.Add(Task.Run(() =>
                 {
                     string fileName = Path.GetFileName(file);
-                    if (fileName.Contains("inventory-") && fileName.Contains("-death-") && fileName.Contains(".dat"))
+                    bool matchesCriteria = true;
+
+                    foreach (var criterion in criteria)
+                    {
+                        if (!fileName.Contains(criterion))
+                        {
+                            matchesCriteria = false;
+                            break;
+                        }
+                    }
+
+                    if (matchesCriteria)
                     {
                         FileInfo fileInfo = new FileInfo(file);
                         long size = fileInfo.Length;
@@ -63,7 +110,7 @@ class Program
                         Interlocked.Increment(ref deletedFileCount);
                         Interlocked.Add(ref totalSize, size);
 
-                        double sizeKB = size / (1024.0);
+                        double sizeKB = size / 1024.0;
                         Console.WriteLine($"Deleted: {file} (Size: {sizeKB:F2} KB)");
                     }
                 }));
@@ -72,7 +119,7 @@ class Program
             var subdirectories = Directory.GetDirectories(directoryPath);
             foreach (var subdirectory in subdirectories)
             {
-                tasks.Add(RemoveFilesAsync(subdirectory));
+                tasks.Add(RemoveFilesAsync(subdirectory, criteria));
             }
 
             await Task.WhenAll(tasks);
